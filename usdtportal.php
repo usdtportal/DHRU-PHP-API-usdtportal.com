@@ -92,7 +92,7 @@ function usdtportal_link($params)
     }
 
     if (isset($server_response->message) AND strlen($server_response->message) > 1) {
-        return '<a class="btn btn-success pt-3 pb-3" style="width: 100%; background-color: green!important;" href="'.$server_response->url.'">'.$lng_lang.'<br><span>'.$server_response->message.'</span>;
+        return '<a class="btn btn-success pt-3 pb-3" style="width: 100%; background-color: green!important;" href="'.$server_response->url.'">'.$lng_languag.'<br><span>'.$server_response->message.'</span>';
     } else {
         return '<a class="btn btn-success pt-3 pb-3" style="width: 100%; background-color: green!important;" href="'.$server_response->url.'">'.$lng_languag["invoicespaynow"].'</a>';
     }
