@@ -34,9 +34,11 @@ if (isset($_POST['test_callback'], $_POST['email'], $_POST['callback_url_passwor
         ];
         exit(json_encode($data));
     } else {
+        $ip = getServerIP();
         $data = [ 
             'is_success' => true,
-            'message' => "Credentials match. Callback is correctly set"
+            'message' => "Credentials match. Callback is correctly set. We found that your Server IP should be: $ip",
+            'ip' => $ip
         ];
         exit(json_encode($data));
     }
@@ -118,6 +120,15 @@ function getInvoiceDetails($order_id, $user_email) {
     WHERE id = '$order_id'
     AND userid = (SELECT id FROM tblUsers WHERE email = '$user_email') 
     LIMIT 1"));
+}
+
+function getServerIP() {
+    $ch = curl_init('https://api.ipify.org?format=json');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $response = curl_exec($ch);
+    curl_close($ch);
+    $json = json_decode($response);
+    return isset($json->ip) ? $json->ip:'0';
 }
 
 ?>
