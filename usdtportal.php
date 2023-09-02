@@ -14,7 +14,7 @@ class USDT_Portal_Service
             'action' => 'new',
             "merchant" => [
                 'email' => $this->params['email'],
-                'api_key' => $params['api_key'],
+                'api_key' => $this->params['api_key'],
             ],
             "customer" => [
                 'user_email' => $this->params["clientdetails"]["email"],
