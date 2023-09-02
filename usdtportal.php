@@ -2,7 +2,7 @@
 
 class USDT_Portal_Service
 {
-    private $gateway_url = "https://test.usdtportal.com/api/";
+    private $gateway_url = "https://usdtportal.com/api/";
     private $params = [];
     private $args = [];
     public $http_code = 0;
