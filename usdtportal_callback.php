@@ -35,12 +35,12 @@ if (isset($_POST['test_callback'], $_POST['email'], $_POST['callback_url_passwor
         exit(json_encode($data));
     } else {
         $ip = getServerIP();
-        $ip_v6 = getServerIP_v6();
+        $ipv6 = getServerIPv6();
         $data = [ 
             'is_success' => true,
             'message' => "Credentials match. Callback is correctly set. We found that your Server IP should be: $ip",
             'ip' => $ip,
-            'ip_v6' => $ip_v6
+            'ipv6' => $ipv6
         ];
         exit(json_encode($data));
     }
@@ -133,7 +133,7 @@ function getServerIP() {
     return isset($json->ip) ? $json->ip:'0';
 }
 
-function getServerIP_v6() {
+function getServerIPv6() {
     $ch = curl_init('https://api64.ipify.org?format=json');
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     $response = curl_exec($ch);
