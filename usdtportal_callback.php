@@ -38,7 +38,7 @@ if (isset($_POST['test_callback'], $_POST['email'], $_POST['callback_url_passwor
         $ipv6 = getServerIPv6();
         $data = [ 
             'is_success' => true,
-            'message' => "Credentials match. Callback is correctly set. We found that your Server IP should be: $ip",
+            'message' => "Credentials match. Callback is correctly set. We found that your Server IPv4: $ip, and your server IPv6: $ipv6",
             'ip' => $ip,
             'ipv6' => $ipv6
         ];
