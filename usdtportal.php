@@ -48,7 +48,7 @@ function usdtportal_config()
     $configarray = array(
         'name' => array(
             'Type' => 'System',
-            'Value' => 'USDT Portal - Auto Crypto Payments www.usdtportal.com'
+            'Value' => 'USDT Portal - Auto Crypto Payments USDT & Binance'
         ),
         'email' => array(
             'Name' => 'USDT Portal Account Email',
