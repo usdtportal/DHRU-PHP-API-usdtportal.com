@@ -107,7 +107,7 @@ $db_subtotal = $orderDetails['subtotal'];
 addPayment($order_id, $txn_hash, $db_subtotal, $fee, $GATEWAY['paymentmethod']);
 sleep(1);
 if (getInvoiceDetails($order_id, $user_email)['status'] == "Unpaid") {
-    addPayment($order_id, $txn_hash, $db_subtotal, $fee, $GATEWAY['paymentmethod']);
+    addPayment($order_id, $txn_hash, 0, $fee, $GATEWAY['paymentmethod']);
 }
 
 $data = [
