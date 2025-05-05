@@ -13,6 +13,7 @@ require ROOTDIR . "/includes/fun.inc.php";
 include ROOTDIR . "/includes/gateway.fun.php";
 include ROOTDIR . "/includes/invoice.fun.php";
 
+$version = 1.1;
 $GATEWAY = loadGatewayModule('usdtportal');
 
 if ($GATEWAY["active"] != 1) {
@@ -40,7 +41,8 @@ if (isset($_POST['test_callback'], $_POST['email'], $_POST['callback_url_passwor
             'code' => 200,
             'message' => "Credentials match. Callback is correctly set.<br>IPv4: $ip<br>IPv6: $ipv6",
             'ip' => $ip,
-            'ipv6' => $ipv6
+            'ipv6' => $ipv6,
+            'version' => $version
         ];
         exit(json_encode($data));
     }
@@ -74,8 +76,11 @@ $initiated_timestamp = $_POST['initiated_timestamp'];
 $received_timestamp = $_POST['received_timestamp'];
 $status = $_POST['status'];
 $creation_ip = $_POST['creation_ip'];
+$edit_amount = $_POST['edit_amount'];
+
 
 $orderDetails = getInvoiceDetails($order_id, $user_email);
+
 if (!$orderDetails) {
     $data = [
         'is_success' => false,
@@ -94,28 +99,47 @@ if ($orderDetails['status'] != "Unpaid") {
     exit(json_encode($data));
 }
 
-if (explode('_',$transaction_id)[0] != $order_id || !checkUSDTPortal($transaction_id, $GATEWAY)) {
+if (searchTxid($txn_hash)) {
     $data = [
         'is_success' => false,
         'code' => '406',
-        'message' => "USDT Portal status claims transaction is unpaid",
+        'message' => "Txid already located in database"
     ];
     exit(json_encode($data));
 }
 
-$db_subtotal = $orderDetails['subtotal'];
-addPayment($order_id, $txn_hash, $db_subtotal, $fee, $GATEWAY['paymentmethod']);
-sleep(1);
-if (getInvoiceDetails($order_id, $user_email)['status'] == "Unpaid") {
-    addPayment($order_id, $txn_hash, 0, $fee, $GATEWAY['paymentmethod']);
+$isAddFundsOrder = ($orderDetails['pos'] == 0 && $orderDetails['warehouse'] == 0 && $orderDetails['retail'] == 0 && $orderDetails['item_types'] == 'AddFunds') ? true:false;
+
+if ($edit_amount && $isAddFundsOrder && $orderDetails['subtotal'] != $amount) {
+    if (!updateInvoice($order_id, $amount)) {
+        $data = [
+            'is_success' => false,
+            'code' => '500',
+            'message' => "Invoice update error"
+        ];
+        exit(json_encode($data));
+    }
 }
+
+if (explode('_',$transaction_id)[0] != $order_id || !checkUSDTPortal($transaction_id, $amount, $GATEWAY)) {
+    $data = [
+        'is_success' => false,
+        'code' => '406',
+        'message' => "USDT Portal status claims transaction is unpaid or amount not same",
+    ];
+    exit(json_encode($data));
+}
+
+addPayment($order_id, $txn_hash, $amount, $fee, $GATEWAY['paymentmethod']);
 
 $data = [
     'is_success' => true,
     'code' => '200',
-    'message' => "Credits Added - $db_subtotal"
+    'message' => "Credits Added - $amount"
 ];
 exit(json_encode($data));
+
+
 
 function getInvoiceDetails($order_id, $user_email) {
     global $config;
@@ -123,11 +147,21 @@ function getInvoiceDetails($order_id, $user_email) {
     $order_id_safe = intval($order_id);
     $user_email_safe = addslashes($user_email);
 
-    $query = "SELECT i.*
-        FROM tbl_invoices i
-        INNER JOIN tblUsers u ON i.userid = u.id
-        WHERE i.id = '$order_id_safe' AND u.email = '$user_email_safe'
-        LIMIT 1";
+    $query = "
+        SELECT 
+            i.*, 
+            GROUP_CONCAT(ii.`type` SEPARATOR ',') AS item_types
+        FROM `tbl_invoices` AS i
+        INNER JOIN `tblUsers` AS u 
+            ON i.`userid` = u.`id`
+        LEFT JOIN `tbl_invoiceitems` AS ii 
+            ON ii.`invoiceid` = i.`id`
+        WHERE 
+            i.`id`    = '$order_id_safe'
+        AND u.`email` = '$user_email_safe'
+        GROUP BY i.`id`
+        LIMIT 1
+    ";
 
     $result = dquery($query);
     if (!$result) {
@@ -137,6 +171,51 @@ function getInvoiceDetails($order_id, $user_email) {
 
     return mysqli_fetch_assoc($result);
 }
+
+function updateInvoice($order_id, $amount) {
+    global $config;
+    
+    $order_id_safe = intval($order_id);
+    $amount_safe = floatval($amount);
+    
+    $query = "UPDATE tbl_invoices 
+              SET subtotal = '$amount_safe', tax = '0', tax2 = '0', shippingtax = '0', taxrate = '0', taxrate2 = '0', fixedcharge = '0', total = '$amount_safe', receivedamount = '0', paymentmethod = 'usdtportal'
+              WHERE id = '$order_id_safe';";
+    
+    $result = dquery($query);
+    if (!$result) {
+        return false;
+    }
+    
+    return updateInvoice2($order_id_safe, $amount_safe);
+}
+
+
+function updateInvoice2($order_id_safe, $amount_safe) {
+    global $config;
+    
+    $query = "UPDATE tbl_invoiceitems 
+        SET amount = '$amount_safe', paymentmethod = 'usdtportal'
+        WHERE invoiceid = '$order_id_safe'";
+    
+    $result = dquery($query);
+    if (!$result) {
+        return false;
+    }
+    
+    return true;
+}
+
+function searchTxid($transid)
+{
+    $result = select_query("tbl_transaction", "id", ["transid" => $transid]);
+    $num_rows = mysqli_num_rows($result);
+    if($num_rows) {
+        return true;
+    }
+    return false;
+}
+
 
 function getServerIP() {
     $ch = curl_init('https://api.ipify.org?format=json');
@@ -156,7 +235,7 @@ function getServerIPv6() {
     return isset($json->ip) ? $json->ip : '0';
 }
 
-function checkUSDTPortal($transaction_id, $GATEWAY) {
+function checkUSDTPortal($transaction_id, $amount, $GATEWAY) {
     $args = [
         "action" => "status",
         "merchant" => [
@@ -179,7 +258,7 @@ function checkUSDTPortal($transaction_id, $GATEWAY) {
 
     if ($http_code == 200) {
         $data = json_decode($response, true);
-        if (isset($data['transaction_status']) && $data['transaction_status'] === 'paid') {
+        if (isset($data['transaction_status'], $data['amount']) && $data['transaction_status'] === 'paid' && $data['amount'] == $amount) {
             return true;
         }
     }
