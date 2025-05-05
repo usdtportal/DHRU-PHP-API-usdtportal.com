@@ -22,8 +22,8 @@ class USDT_Portal_Service
                 'currency' => strtoupper($params['currency'])
             ],
             'order_id' => $this->params["invoiceid"],
-            'redirect_paid' => $this->params['systemurl'] . 'settings/statement',
-            'redirect_canceled' => $this->params['systemurl'] . 'main',
+            'redirect_paid' => $this->params['systemurl'] . 'viewinvoice/id/'.md5($this->params["invoiceid"]),
+            'redirect_canceled' => $this->params['systemurl'] . 'viewinvoice/id/'.md5($this->params["invoiceid"]),
         ];
     }
    
